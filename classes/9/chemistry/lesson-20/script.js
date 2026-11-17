@@ -20,5 +20,29 @@ function check(x,v){if(x.type==='single')return +v===x.answer;if(x.type==='multi
 $('finish').onclick=()=>{if(submitted)return;const missing=questions.filter((x,i)=>!answered(x,value(x,i))).length;if(missing&&!confirm(`Не виконано ${missing} завдань. Завершити перевірку?`))return;submitted=true;score=0;questions.forEach((x,i)=>{const el=$('q'+i),ok=check(x,value(x,i));score+=ok?1:0;el.classList.add(ok?'correct':'wrong');const p=document.createElement('p');p.className='feedback';p.textContent=(ok?'✓ Правильно. ':'✗ Потрібно повторити. ')+x.why;el.appendChild(p);el.querySelectorAll('input,select').forEach(n=>n.disabled=true)});const grade=Math.round(score/12*100);$('results').hidden=false;$('results').innerHTML=`<h2>Ваш результат: ${score} із 12 (${grade}%)</h2><p>Правильні відповіді та пояснення показано під кожним завданням. Перегляньте помилки та сформулюйте висновок.</p>`;$('finish').disabled=true;$('finish').textContent='Перевірку завершено';$('results').scrollIntoView({behavior:'smooth',block:'center'})};
 $('theoryBtn').onclick=()=>{const show=$('theory').hidden;$('theory').hidden=!show;$('theoryBtn').setAttribute('aria-expanded',String(show));$('theoryBtn').textContent=show?'Сховати ключові слова ▴':'Ключові слова ▾'};
 $('concentration').oninput=()=>{$('cvalue').textContent=$('concentration').value};
-$('run').onclick=()=>{const kind=$('substance').value,c=+$('concentration').value, strength={salt:1,sugar:0,acid:1,vinegar:.07,water:0}[kind],intensity=c*strength,on=intensity>=2;const bulb=$('bulb');bulb.classList.toggle('on',on);bulb.style.opacity=on?String(.5+Math.min(intensity/100,.5)):'0.45';const particle=$('particles');particle.innerHTML='';for(let j=0;j<Math.min(28,Math.round(intensity/3));j++){let s=document.createElement('span');s.className='ion';s.textContent=j%2?'−':'+';s.style.color=j%2?'#1470ad':'#9343a4';s.style.left=(7+(j*37)%83)+'%';s.style.top=(23+(j*29)%63)+'%';particle.appendChild(s)}const predicted=$('prediction').value==='yes';$('simResult').textContent=`${on?'Струм проводиться':'Провідність у цій моделі не виявлена'}. ${predicted===on?'Ваш прогноз підтвердився.':'Ваш прогноз не підтвердився.'} ${kind==='sugar'?'Цукор не утворює йонів.':kind==='vinegar'?'Етанова кислота дисоціює частково.':kind==='water'?'Дистильована вода має дуже низьку провідність.':'Рухомі йони переносять заряд.'}`};
+function resetSimulation(){const bulb=$('bulb');bulb.className='bulb';bulb.style.removeProperty('--glow');bulb.setAttribute('aria-label','Лампочка вимкнена');$('particles').replaceChildren();$('simResult').textContent='Оберіть умови й запустіть дослід.'}
+$('substance').addEventListener('change',resetSimulation);
+$('concentration').addEventListener('input',()=>{$('cvalue').textContent=$('concentration').value;resetSimulation()});
+$('run').onclick=()=>{
+ const kind=$('substance').value,c=+$('concentration').value;
+ const strength={salt:1,sugar:0,acid:1,vinegar:.07,water:0}[kind];
+ const intensity=c*strength;
+ const level=intensity<0.5?'off':intensity<15?'dim':'bright';
+ const on=level!=='off';const bulb=$('bulb');
+ bulb.className='bulb '+level;
+ bulb.style.setProperty('--glow',String(Math.min(1,intensity/65)));
+ bulb.setAttribute('aria-label',level==='bright'?'Лампочка світиться яскраво':level==='dim'?'Лампочка світиться тьмяно':'Лампочка вимкнена');
+ const particles=$('particles');particles.replaceChildren();
+ const count=on?Math.min(24,Math.max(6,2*Math.ceil(intensity/6))):0;
+ for(let i=0;i<count;i++){
+  const ion=document.createElement('span');ion.className='ion '+(i%2?'anion':'cation');
+  ion.textContent=i%2?'−':'+';
+  ion.style.left=(15+(i*23)%65)+'%';ion.style.top=(40+(i*17)%45)+'%';
+  ion.style.animationDelay=(-(i*0.31))+'s';particles.appendChild(ion);
+ }
+ const predicted=$('prediction').value==='yes';
+ const status=level==='bright'?'Лампочка світиться яскраво':level==='dim'?'Лампочка світиться тьмяно':'Лампочка не світиться';
+ const explanation=kind==='sugar'?'Сахароза не утворює йонів.':kind==='vinegar'?'Етанова кислота — слабкий електроліт, вона дисоціює частково.':kind==='water'?'Дистильована вода проводить струм надзвичайно слабко.':c===0?'За нульової концентрації розчиненої речовини провідність практично відсутня.':'Рухомі йони переносять електричний заряд.';
+ $('simResult').textContent=`${status}. ${predicted===on?'Ваш прогноз підтвердився.':'Ваш прогноз не підтвердився.'} ${explanation}`;
+};
 $('pdf').onclick=()=>{if(!submitted){alert('Спочатку завершіть контрольну роботу, щоб результат потрапив до PDF.');return}const n=$('student').value.trim()||'Учень / учениця';const existing=$('printDetails');if(existing)existing.remove();const info=document.createElement('div');info.id='printDetails';info.innerHTML=`<h2>Підсумок учня</h2><p><strong>Ім’я:</strong> ${escapeHtml(n)}</p><p><strong>Результат:</strong> ${score}/12 (${Math.round(score/12*100)}%)</p><p><strong>Висновок:</strong> ${escapeHtml($('reflection').value)}</p>`;$('results').appendChild(info);window.print()};function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}render();
